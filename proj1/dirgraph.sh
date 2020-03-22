@@ -1,5 +1,6 @@
 #!/bin/sh
 #cat dirgraph|tr -d '\r'>dirgraph.sh
+#test -t 1
 POSIXLY_CORRECT=yes
 histnormalization=false
 dirtosearch=
@@ -17,6 +18,7 @@ under1GiB=0
 aboveeq1GiB=0
 normalizationcoefficient=1
 labelsoffset=13
+terminalsize=79
 
 check_args(){
 			#Checks if directory to be searched was specified, otherwise directory to searched is current directory	
@@ -46,7 +48,6 @@ check_args(){
 		fi
 	fi
 }
-
 init_args(){
 	while getopts "i:n" o; 
 	do
@@ -65,47 +66,34 @@ init_args(){
 	    esac
 	done
 	shift $((OPTIND-1))
-
-
 	check_args "$@"
-
 }
-
 print_info(){
-	subdirscounter=$(find "$dirtosearch" -type d -not -regex "$dirtoignoreregex" |  wc -l)
-	filescounter=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" |  wc -l)
+	subdirscounter=$(find "$dirtosearch" -type d -not -regex "$dirtoignoreregex" 2>/dev/null|  wc -l)
+	filescounter=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" 2>/dev/null|  wc -l)
+	
 	echo "Root directory: $dirtosearch"
 	echo "Directories: $subdirscounter" 
 	echo "All files: $filescounter" 
 }
 drawHashes(){
 	x=1
-	while [ $x -le $1 ]
+	while [ $x -le "$1" ]
 	do
 	  printf "#"
-	  x=$(( $x + 1 ))
+	  x=$(( x + 1 ))
 	done
 }
 filesize_counter(){
-	under100B=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size -100c | wc -l)
-	under1KiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +100c -size -1024c | wc -l)
-	under10KiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +1024c -size -10k | wc -l)
-	under100KiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +10k -size -100k | wc -l)
-	under1MiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +100k -size -1024k | wc -l)
-	under10MiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +1024k -size -10M | wc -l)
-	under100MiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +10M -size -100M | wc -l)
-	under1GiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +100M -size -1024M | wc -l)
-	aboveeq1GiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +1023M | wc -l)
-
-	#echo "$under100B"
-	#echo "$under1KiB"
-	#echo "$under10KiB"
-	#echo "$under100KiB"
-	#echo "$under1MiB"
-	#echo "$under10MiB"
-	#echo "$under100MiB"
-	#echo "$under1GiB"
-	#echo "$aboveeq1GiB"
+	under100B=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size -100c 2>/dev/null | wc -l)
+	under1KiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +100c -size -1024c 2>/dev/null | wc -l)
+	under10KiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +1024c -size -10k 2>/dev/null| wc -l)
+	under100KiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +10k -size -100k 2>/dev/null| wc -l)
+	under1MiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +100k -size -1024k 2>/dev/null| wc -l)
+	under10MiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +1024k -size -10M 2>/dev/null| wc -l)
+	under100MiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +10M -size -100M 2>/dev/null| wc -l)
+	under1GiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +100M -size -1024M 2>/dev/null| wc -l)
+	aboveeq1GiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +1023M 2>/dev/null| wc -l)
 
 }
 getmaxcount(){
@@ -117,25 +105,41 @@ getmaxcount(){
 	maxCount=$(( maxCount > under100MiB ? maxCount : under100MiB ))
 	maxCount=$(( maxCount > under1GiB ? maxCount : under1GiB ))
 	maxCount=$(( maxCount > aboveeq1GiB ? maxCount : aboveeq1GiB ))
-
-
 }
 normalization(){
 	terminalsize=$(tput cols)
 	maxHashes=$((terminalsize-labelsoffset))
-	#echo "$terminalsize"
 	getmaxcount
-	#echo "$maxCount"
-	normalizationcoefficient=$((maxHashes / maxCount))
-	under100B=$((under100B * normalizationcoefficient))
-	under1KiB=$((under1KiB * normalizationcoefficient))
-	under10KiB=$((under10KiB * normalizationcoefficient))
-	under100KiB=$((under100KiB * normalizationcoefficient))
-	under1MiB=$((under1MiB * normalizationcoefficient))
-	under10MiB=$((under10MiB * normalizationcoefficient))
-	under100MiB=$((under100MiB * normalizationcoefficient))
-	under1GiB=$((under1GiB * normalizationcoefficient))
-	aboveeq1GiB=$((aboveeq1GiB * normalizationcoefficient))
+	normalizationcoefficient=$((maxCount / maxHashes))
+	overHashes=$((maxCount-(maxHashes*normalizationcoefficient)))
+	while [ $overHashes -gt 0 ]
+		do
+			normalizationcoefficient=$((normalizationcoefficient+1))
+			overHashes=$((maxCount-(maxHashes*normalizationcoefficient)))
+		done 	
+	under100B=$((under100B / normalizationcoefficient))
+	under1KiB=$((under1KiB / normalizationcoefficient))
+	under10KiB=$((under10KiB / normalizationcoefficient))
+	under100KiB=$((under100KiB / normalizationcoefficient))
+	under1MiB=$((under1MiB / normalizationcoefficient))
+	under10MiB=$((under10MiB / normalizationcoefficient))
+	under100MiB=$((under100MiB / normalizationcoefficient))
+	under1GiB=$((under1GiB / normalizationcoefficient))
+	aboveeq1GiB=$((aboveeq1GiB / normalizationcoefficient))
+
+			#In case we would want to have always full size histogram
+			#The histogram would stretch on the full witdth of the terminal 
+			#if there is small amount of files
+ 			#normalizationcoefficient=$((maxHashes / maxCount))
+ 			#under100B=$((under100B * normalizationcoefficient))
+			#under1KiB=$((under1KiB * normalizationcoefficient))
+			#under10KiB=$((under10KiB * normalizationcoefficient))
+			#under100KiB=$((under100KiB * normalizationcoefficient))
+			#under1MiB=$((under1MiB * normalizationcoefficient))
+			#under10MiB=$((under10MiB * normalizationcoefficient))
+			#under100MiB=$((under100MiB * normalizationcoefficient))
+			#under1GiB=$((under1GiB * normalizationcoefficient))
+			#aboveeq1GiB=$((aboveeq1GiB * normalizationcoefficient))
 }
 drawFsHist(){
 	filesize_counter
