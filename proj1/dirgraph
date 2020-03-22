@@ -21,13 +21,11 @@ labelsoffset=13
 terminalsize=79
 
 check_args(){
-			#Checks if directory to be searched was specified, otherwise directory to searched is current directory	
+	#Checks if directory to be searched was specified, otherwise directory to searched is current directory	
 	if [ -z "$*" ]
 	then
-	      #echo "\$* is empty"
 	      dirtosearch=$PWD
 	else
-	      #echo "\$* is NOT empty"
 	      dirtosearch=$*
 	fi
 	#Checks if directory to be searched is directory 
@@ -49,6 +47,7 @@ check_args(){
 	fi
 }
 init_args(){
+	#Initializes arguments 
 	while getopts "i:n" o; 
 	do
 	    case $o in
@@ -69,9 +68,13 @@ init_args(){
 	check_args "$@"
 }
 print_info(){
+	#Prints info of files and directories found
 	subdirscounter=$(find "$dirtosearch" -type d -not -regex "$dirtoignoreregex" 2>/dev/null|  wc -l)
 	filescounter=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" 2>/dev/null|  wc -l)
-	
+	#Removes whitespaces from variables
+	subdirscounter="$(echo "${subdirscounter}" | sed -e 's/^[[:space:]]*//')"
+	filescounter="$(echo "${filescounter}" | sed -e 's/^[[:space:]]*//')"
+
 	echo "Root directory: $dirtosearch"
 	echo "Directories: $subdirscounter" 
 	echo "All files: $filescounter" 
@@ -85,6 +88,7 @@ drawHashes(){
 	done
 }
 filesize_counter(){
+	#Gets amounts of file for every category
 	under100B=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size -100c 2>/dev/null | wc -l)
 	under1KiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +100c -size -1024c 2>/dev/null | wc -l)
 	under10KiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +1024c -size -10k 2>/dev/null| wc -l)
@@ -97,6 +101,7 @@ filesize_counter(){
 
 }
 getmaxcount(){
+	#Picks category with the highest amount of files
 	maxCount=$(( under100B > under1KiB ? under100B : under1KiB ))
 	maxCount=$(( maxCount > under10KiB ? maxCount : under10KiB ))
 	maxCount=$(( maxCount > under100KiB ? maxCount : under100KiB ))
@@ -107,6 +112,7 @@ getmaxcount(){
 	maxCount=$(( maxCount > aboveeq1GiB ? maxCount : aboveeq1GiB ))
 }
 normalization(){
+	#Divides every category by n times so no category in histogram takes two lines
 	terminalsize=$(tput cols)
 	maxHashes=$((terminalsize-labelsoffset))
 	getmaxcount
