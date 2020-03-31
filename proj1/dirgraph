@@ -1,5 +1,5 @@
 #!/bin/sh
-#cat dirgraph|tr -d '\r'>dirgraph.sh
+#cat dirgraph|tr -d '\r'>dirgraph.sh Command to remove windows carriage return 
 #test -t 1
 POSIXLY_CORRECT=yes
 histnormalization=false
@@ -19,7 +19,7 @@ aboveeq1GiB=0
 normalizationcoefficient=1
 labelsoffset=13
 terminalsize=79
-
+error=false
 check_args(){
 	#Checks if directory to be searched was specified, otherwise directory to searched is current directory	
 	if [ -z "$*" ]
@@ -89,8 +89,8 @@ drawHashes(){
 }
 filesize_counter(){
 	#Gets amounts of file for every category
-	under100B=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size -100c 2>/dev/null | wc -l)
-	under1KiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +100c -size -1024c 2>/dev/null | wc -l)
+	under100B=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size -100c  2>/dev/null| wc -l)
+	under1KiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +100c -size -1024c 2>/dev/null| wc -l)
 	under10KiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +1024c -size -10k 2>/dev/null| wc -l)
 	under100KiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +10k -size -100k 2>/dev/null| wc -l)
 	under1MiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +100k -size -1024k 2>/dev/null| wc -l)
@@ -98,6 +98,12 @@ filesize_counter(){
 	under100MiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +10M -size -100M 2>/dev/null| wc -l)
 	under1GiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +100M -size -1024M 2>/dev/null| wc -l)
 	aboveeq1GiB=$(find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" -size +1023M 2>/dev/null| wc -l)
+
+	if ! find "$dirtosearch" -type f -not -regex "$dirtoignoreregex" >/dev/null 2>/dev/null ;
+		then 
+			error=true
+			echo "!!! Access to some files or directories in this directory was not permitted. !!!"
+	fi
 
 }
 getmaxcount(){
@@ -169,3 +175,8 @@ drawFsHist(){
 init_args "$@" #Calling function with arguments
 print_info
 drawFsHist
+
+if $error; then
+	exit 1
+fi
+exit 0
