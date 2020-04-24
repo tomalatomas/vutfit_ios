@@ -1,8 +1,9 @@
 #!/bin/sh
-#cat dirgraph|tr -d '\r'>dirgraph.sh Command to remove windows carriage return 
+#cat dirgraph|tr -d '\r'>dirgraph.sh Command to remove windows carriage return okok
 #test -t 1
 POSIXLY_CORRECT=yes
 histnormalization=false
+dirtosearchrelative=
 dirtosearch=
 dirtoignoreregex="/[^\w\W]/"
 subdirscounter=
@@ -24,18 +25,18 @@ check_args(){
 	#Checks if directory to be searched was specified, otherwise directory to searched is current directory	
 	if [ -z "$*" ]
 	then
-	      dirtosearch=$PWD
+	      dirtosearchrelative=$PWD
 	else
-	      dirtosearch=$*
+	      dirtosearchrelative=$*
 	fi
 	#Checks if directory to be searched is directory 
-	if [ ! -d "$dirtosearch" ]
+	if [ ! -d "$dirtosearchrelative" ]
 		then
 			 echo "Directory to be searched isnt a directory" >&2
 		      exit 1	
 	fi
 	#Converting relative path to absolute
-	dirtosearch="$(cd "$(dirname "$dirtosearch")"; pwd -P)/$(basename "$dirtosearch")"
+	dirtosearch="$(cd "$(dirname "$dirtosearchrelative")"; pwd -P)/$(basename "$dirtosearchrelative")"
 	#Ensuring directory to be ignored doesnt contain root directory
 	if [ ! -z "$dirtoignoreregex" ]
 		then
@@ -75,7 +76,7 @@ print_info(){
 	subdirscounter="$(echo "${subdirscounter}" | sed -e 's/^[[:space:]]*//')"
 	filescounter="$(echo "${filescounter}" | sed -e 's/^[[:space:]]*//')"
 
-	echo "Root directory: $dirtosearch"
+	echo "Root directory: $dirtosearchrelative"
 	echo "Directories: $subdirscounter" 
 	echo "All files: $filescounter" 
 }
