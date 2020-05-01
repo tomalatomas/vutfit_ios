@@ -74,7 +74,7 @@ bool initShmSem(){
 	if (sem_init(sem_immStart, 1, 0) == -1) return false;
 	if (sem_init(sem_immCheck, 1, 0) == -1) return false;
 	if (sem_init(sem_immGotCert, 1, 0) == -1) return false;
-	if (sem_init(sem_jdgEnter, 1, 0) == -1) return false;
+	if (sem_init(sem_jdgEnter, 1, 1) == -1) return false;
 	if (sem_init(sem_jdgConf, 1, 0) == -1) return false;
 	if (sem_init(sem_log, 1, 1) == -1) return false;
 
@@ -112,31 +112,71 @@ bool cleanup(){
 void printLogJudge(char *text){
 
 	sem_wait(sem_log);
-	fprintf(logFile,"%d:JUDGE:%s\n",(*actionCounter)++,text);
+		fprintf(logFile,"%d\t: JUDGE : %-17s \t: %d\t: %d\t: %d\n",(*actionCounter)++,text,*inBldNotConf,*chckdNotConf,*inBld);
+	sem_post(sem_log);
+	
+}
+
+void printLogImmigrant(char *text, int idImm, int NE, int NC, int NB){
+	sem_wait(sem_log);
+		fprintf(logFile,"%d\t: IMM %d\t: %-17s \t: %d\t: %d\t: %d\n",(*actionCounter)++,idImm,text, NE,NC,NB);
 	sem_post(sem_log);
 	
 }
 
 void immigrants(){
-
+	srand(time(NULL)*getpid());
+	pid_t immigrantPid;
+    int i;
+    for(i=1; i<=arguments.pI; i++){
+    	if (arguments.iG != 0){
+			int delay= random() % arguments.iG;
+			//printf("Imm:%d\n",delay);
+			usleep(delay * 1000);
+		} 
+		immigrantPid= fork();
+		if(immigrantPid==0){ //New Immigrant
+			printLogImmigrant("started",i,*inBldNotConf,*chckdNotConf,*inBld);
+			//sem_wait(sem_jdgEnter);
+			printLogImmigrant("enters",i,(*inBldNotConf)++,*chckdNotConf,(*inBld)++);
+			printLogImmigrant("checks",i,*inBldNotConf,(*chckdNotConf)++,*inBld);
+			//sem_wait(sem_jdgConf);
+			printLogImmigrant("wants certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
+			printLogImmigrant("got certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
+			printLogImmigrant("leaves",i,*inBldNotConf,*chckdNotConf,(*inBld)--);
+		    exit(0);
+		}
+		else if (immigrantPid<0){
+			fprintf(stderr, "Immigrant fork failed!\n");
+			cleanup();
+			//return 1;	
+			exit(1);
+		}
+    }
 }
+
 void judge(){
+	srand(time(NULL));
 	if (arguments.jG != 0){
-		int delay= rand() % arguments.jG;
+		int delay= random() % arguments.jG;
+		//printf("Judge:%d\n",delay);
 		usleep(delay * 1000);
-		//sem_wait(sem_jdgEnter);
+	} 
+	    sem_wait(sem_jdgEnter);
 		printLogJudge("wants to enter");
+		printLogJudge("enters");
 		printLogJudge("waits for imm");
+		sem_post(sem_jdgConf);
 		printLogJudge("starts confirmation");
 		printLogJudge("ends confirmation");
+		sem_wait(sem_jdgConf);
 		printLogJudge("leaves");
-	} 
-	
+		sem_post(sem_jdgEnter);
+		exit(0);
 }
 
 //_________________________________________________________________________________
 int main(int argc, char *argv[]){
-	srand(time(NULL));
 	if(!initArgs(argc,argv,&arguments)||!initLogFile()||!initShmSem()){
 		fprintf(stderr, "Program initialized unsuccessfuly\n");
 		return 1;
@@ -146,12 +186,13 @@ int main(int argc, char *argv[]){
 	if (firstFork == 0) {
 		secondFork=fork();
 		if (secondFork == 0) {
-			//immigrant Generator
-			//immigrants();
-		}
-		else if(secondFork>0){
 			//judge Generator
 			judge();
+		}
+		else if(secondFork>0){
+			
+			//immigrant Generator
+			immigrants();
 		}
 		else{
 			fprintf(stderr, "Fork failed!");
