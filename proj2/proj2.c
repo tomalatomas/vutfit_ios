@@ -72,7 +72,7 @@ bool initShmSem(){
 	if ((sem_log =mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED) return false;
 
 	if (sem_init(sem_immStart, 1, 0) == -1) return false;
-	if (sem_init(sem_immCheck, 1, 0) == -1) return false;
+	if (sem_init(sem_immCheck, 1, 1) == -1) return false;
 	if (sem_init(sem_immGotCert, 1, 0) == -1) return false;
 	if (sem_init(sem_jdgEnter, 1, 1) == -1) return false;
 	if (sem_init(sem_jdgConf, 1, 0) == -1) return false;
@@ -124,26 +124,37 @@ void printLogImmigrant(char *text, int idImm, int NE, int NC, int NB){
 	
 }
 
+void waitFor(int sharedVariable){
+	if(sharedVariable!=0){
+		int delay= random() % sharedVariable;
+		usleep(delay * 1000);
+	}
+}
+
 void immigrants(){
 	srand(time(NULL)*getpid());
 	pid_t immigrantPid;
     int i;
     for(i=1; i<=arguments.pI; i++){
-    	if (arguments.iG != 0){
-			int delay= random() % arguments.iG;
-			//printf("Imm:%d\n",delay);
-			usleep(delay * 1000);
-		} 
+    	waitFor(arguments.iG);
 		immigrantPid= fork();
 		if(immigrantPid==0){ //New Immigrant
-			printLogImmigrant("started",i,*inBldNotConf,*chckdNotConf,*inBld);
-			//sem_wait(sem_jdgEnter);
-			printLogImmigrant("enters",i,(*inBldNotConf)++,*chckdNotConf,(*inBld)++);
-			printLogImmigrant("checks",i,*inBldNotConf,(*chckdNotConf)++,*inBld);
-			//sem_wait(sem_jdgConf);
-			printLogImmigrant("wants certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
-			printLogImmigrant("got certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
-			printLogImmigrant("leaves",i,*inBldNotConf,*chckdNotConf,(*inBld)--);
+				printLogImmigrant("started",i,*inBldNotConf,*chckdNotConf,*inBld);
+			sem_wait(sem_jdgEnter); //Entes building if there is no judge in building
+			sem_post(sem_jdgEnter); //Preserve the value of the semaphore
+				printLogImmigrant("enters",i,(*inBldNotConf)++,*chckdNotConf,(*inBld)++);
+			sem_wait(sem_immCheck);
+				printLogImmigrant("checks",i,*inBldNotConf,(*chckdNotConf)++,*inBld);
+			sem_post(sem_immCheck);
+			//printf("PreConf imm:%d\n", i);
+			sem_wait(sem_jdgConf);//Continues if judge confirmed the certificate
+			sem_post(sem_jdgConf);
+			//printf("PostConf imm:%d\n", i);
+				printLogImmigrant("wants certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
+				waitFor(arguments.iT);
+				printLogImmigrant("got certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
+				(*inBld)--;
+				printLogImmigrant("leaves",i,*inBldNotConf,*chckdNotConf,(*inBld)--);
 		    exit(0);
 		}
 		else if (immigrantPid<0){
@@ -157,21 +168,30 @@ void immigrants(){
 
 void judge(){
 	srand(time(NULL));
-	if (arguments.jG != 0){
-		int delay= random() % arguments.jG;
-		//printf("Judge:%d\n",delay);
-		usleep(delay * 1000);
-	} 
+	waitFor(arguments.jG);
 	    sem_wait(sem_jdgEnter);
-		printLogJudge("wants to enter");
-		printLogJudge("enters");
-		printLogJudge("waits for imm");
-		sem_post(sem_jdgConf);
-		printLogJudge("starts confirmation");
-		printLogJudge("ends confirmation");
-		sem_wait(sem_jdgConf);
-		printLogJudge("leaves");
+			printLogJudge("wants to enter");
+			printLogJudge("enters");
+			if(*chckdNotConf!=*inBld){
+				printLogJudge("waits for imm"); //Prints if some immigrant havent checked yet
+			}
+		sem_wait(sem_immCheck);  //Judge waits till all immigrants have checked
+			printLogJudge("starts confirmation");
+			waitFor(arguments.jT);
+		sem_post(sem_jdgConf); //Judge confirmed the certificate
+			printLogJudge("ends confirmation");
+			*inBldNotConf=0;
+			*chckdNotConf=0;
+				waitFor(arguments.jT);
+			printLogJudge("leaves");
+			if(arguments.pI==*resolvedImmigrants){
+				printLogJudge("finishes");
+		    }
 		sem_post(sem_jdgEnter);
+		if(*resolvedImmigrants!=arguments.pI)
+			{
+				judge();
+			}
 		exit(0);
 }
 
@@ -187,7 +207,8 @@ int main(int argc, char *argv[]){
 		secondFork=fork();
 		if (secondFork == 0) {
 			//judge Generator
-			judge();
+				judge();
+			
 		}
 		else if(secondFork>0){
 			
