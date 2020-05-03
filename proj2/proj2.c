@@ -124,6 +124,12 @@ void printLogImmigrant(char *text, int idImm, int NE, int NC, int NB){
 	
 }
 
+void printDebugSemValue(char *text, sem_t *semaphore){
+		int semValue;
+		sem_getvalue(semaphore,&semValue);
+		printf("%s:%d\n",text,semValue);
+}
+
 void waitFor(int sharedVariable){
 	if(sharedVariable!=0){
 		int delay= random() % sharedVariable;
@@ -142,19 +148,23 @@ void immigrants(){
 				printLogImmigrant("started",i,*inBldNotConf,*chckdNotConf,*inBld);
 			sem_wait(sem_jdgEnter); //Entes building if there is no judge in building
 			sem_post(sem_jdgEnter); //Preserve the value of the semaphore
-				printLogImmigrant("enters",i,(*inBldNotConf)++,*chckdNotConf,(*inBld)++);
+				printLogImmigrant("enters",i,(*inBldNotConf)++,*chckdNotConf,++(*inBld));
+				//printDebugSemValue("Immigrant:ImmCheck before checking",sem_immCheck);
 			sem_wait(sem_immCheck);
-				printLogImmigrant("checks",i,*inBldNotConf,(*chckdNotConf)++,*inBld);
+				printLogImmigrant("checks",i,*inBldNotConf,++(*chckdNotConf),*inBld);
 			sem_post(sem_immCheck);
-			//printf("PreConf imm:%d\n", i);
+				printDebugSemValue("Immigrant:jdgConf waiting for confirmation",sem_jdgConf);
+				//printDebugSemValue("Immigrant:ImmCheck after checking",sem_immCheck);
 			sem_wait(sem_jdgConf);//Continues if judge confirmed the certificate
+				printDebugSemValue("Immigrant:jdgConf confirmed",sem_jdgConf);
 			sem_post(sem_jdgConf);
-			//printf("PostConf imm:%d\n", i);
+				printDebugSemValue("Immigrant:jdgConf continues",sem_jdgConf);
 				printLogImmigrant("wants certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
 				waitFor(arguments.iT);
+				(*resolvedImmigrants)++;
 				printLogImmigrant("got certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
 				(*inBld)--;
-				printLogImmigrant("leaves",i,*inBldNotConf,*chckdNotConf,(*inBld)--);
+				printLogImmigrant("leaves",i,*inBldNotConf,*chckdNotConf,--(*inBld));
 		    exit(0);
 		}
 		else if (immigrantPid<0){
@@ -166,7 +176,7 @@ void immigrants(){
     }
 }
 
-void judge(){
+void judge(){ 
 	srand(time(NULL));
 	waitFor(arguments.jG);
 	    sem_wait(sem_jdgEnter);
@@ -175,10 +185,15 @@ void judge(){
 			if(*chckdNotConf!=*inBld){
 				printLogJudge("waits for imm"); //Prints if some immigrant havent checked yet
 			}
+			//printDebugSemValue("Judge:ImmCheck before checking",sem_immCheck);
 		sem_wait(sem_immCheck);  //Judge waits till all immigrants have checked
+		sem_post(sem_immCheck);
+			//printDebugSemValue("Judge:ImmCheck after checking",sem_immCheck);
 			printLogJudge("starts confirmation");
+			printDebugSemValue("Judge:jdgConf preconf",sem_jdgConf);
+			sem_post(sem_jdgConf); //Judge confirmed the certificate
+			printDebugSemValue("Judge:jdgConf conf",sem_jdgConf);
 			waitFor(arguments.jT);
-		sem_post(sem_jdgConf); //Judge confirmed the certificate
 			printLogJudge("ends confirmation");
 			*inBldNotConf=0;
 			*chckdNotConf=0;
@@ -187,6 +202,9 @@ void judge(){
 			if(arguments.pI==*resolvedImmigrants){
 				printLogJudge("finishes");
 		    }
+		sem_wait(sem_jdgConf);
+		printDebugSemValue("Judge:jdgConf afterconf",sem_jdgConf);
+
 		sem_post(sem_jdgEnter);
 		if(*resolvedImmigrants!=arguments.pI)
 			{
