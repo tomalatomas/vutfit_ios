@@ -117,9 +117,24 @@ void printLogJudge(char *text){
 	
 }
 
+void printLogJudgeSimple(char *text){
+
+	sem_wait(sem_log);
+		fprintf(logFile,"%d\t: JUDGE \t: %-17s \n",(*actionCounter)++,text);
+	sem_post(sem_log);
+	
+}
+
 void printLogImmigrant(char *text, int idImm, int NE, int NC, int NB){
 	sem_wait(sem_log);
 		fprintf(logFile,"%d\t: IMM %d \t: %-17s \t: %d\t: %d\t: %d\n",(*actionCounter)++,idImm,text, NE,NC,NB);
+	sem_post(sem_log);
+	
+}
+
+void printLogImmigrantSimple(char *text, int idImm){
+	sem_wait(sem_log);
+		fprintf(logFile,"%d\t: IMM %d \t: %-17s \n",(*actionCounter)++,idImm,text);
 	sem_post(sem_log);
 	
 }
@@ -145,10 +160,10 @@ void immigrants(){
     	waitFor(arguments.iG);
 		immigrantPid= fork();
 		if(immigrantPid==0){ //New Immigrant
-				printLogImmigrant("started",i,*inBldNotConf,*chckdNotConf,*inBld);
+				printLogImmigrantSimple("starts",i);
 			sem_wait(sem_jdgEnter); //Entes building if there is no judge in building
 			sem_post(sem_jdgEnter); //Preserve the value of the semaphore
-				printLogImmigrant("enters",i,(*inBldNotConf)++,*chckdNotConf,++(*inBld));
+				printLogImmigrant("enters",i,++(*inBldNotConf),*chckdNotConf,++(*inBld));
 				//printDebugSemValue("Immigrant:ImmStart There is someone to be confirmed",sem_immStart);
 				sem_post(sem_immStart);
 			sem_wait(sem_immCheck);
@@ -165,14 +180,12 @@ void immigrants(){
 				waitFor(arguments.iT);
 				//(*resolvedImmigrants)++;
 				printLogImmigrant("got certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
-				(*inBld)--;
 				printLogImmigrant("leaves",i,*inBldNotConf,*chckdNotConf,--(*inBld));
 		    exit(0);
 		}
 		else if (immigrantPid<0){
 			fprintf(stderr, "Immigrant fork failed!\n");
 			cleanup();
-			//return 1;	
 			exit(1);
 		}
     }
@@ -182,7 +195,7 @@ void judge(){
 	srand(time(NULL));
 	waitFor(arguments.jG);
 	    sem_wait(sem_jdgEnter);
-			printLogJudge("wants to enter");
+			printLogJudgeSimple("wants to enter");
 			printLogJudge("enters");
 			if(*chckdNotConf!=*inBld){
 				printLogJudge("waits for imm"); //Prints if some immigrant havent checked yet
@@ -208,7 +221,7 @@ void judge(){
 		sem_post(sem_jdgEnter);
 		if(arguments.pI==*resolvedImmigrants){
 				//printf("%d = %d\n",*resolvedImmigrants,arguments.pI);
-				printLogJudge("finishes");
+				printLogJudgeSimple("finishes");
 		    }
 		else
 			{

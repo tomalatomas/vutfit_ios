@@ -52,7 +52,9 @@ typedef struct {
 		bool initShmSem();
 		bool cleanup();
 		void printLogImmigrant(char *text, int idImm, int NE, int NC, int NB);
+		void printLogImmigrantSimple(char *text, int idImm);
 		void printLogJudge(char *text);
+		void printLogJudgeSimple(char *text);
 		void immigrants();
 		void judge();
 #endif
