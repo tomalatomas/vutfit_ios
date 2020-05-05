@@ -66,14 +66,12 @@ bool initShmSem(){
 	//Semaphores
 	if ((sem_immStart=mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED) return false;
 	if ((sem_immCheck =mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED)return false;
-	if ((sem_immGotCert =mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED) return false;
 	if ((sem_jdgEnter =mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED) return false;
 	if ((sem_jdgConf =mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED) return false;
 	if ((sem_log =mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED) return false;
 
 	if (sem_init(sem_immStart, 1, 1) == -1) return false;
 	if (sem_init(sem_immCheck, 1, 1) == -1) return false;
-	if (sem_init(sem_immGotCert, 1, 0) == -1) return false;
 	if (sem_init(sem_jdgEnter, 1, 1) == -1) return false;
 	if (sem_init(sem_jdgConf, 1, 0) == -1) return false;
 	if (sem_init(sem_log, 1, 1) == -1) return false;
@@ -85,13 +83,11 @@ bool cleanup(){
 	//Semaphores
 	if(sem_destroy(sem_immStart) == -1) return false;
 	if(sem_destroy(sem_immCheck) == -1) return false;
-	if(sem_destroy(sem_immGotCert) == -1) return false;
 	if(sem_destroy(sem_jdgEnter) == -1) return false;
 	if(sem_destroy(sem_jdgConf) == -1) return false;
 	if(sem_destroy(sem_log) == -1) return false;
 	munmap(sem_immStart,sizeof(sem_t));	
 	munmap(sem_immCheck,sizeof(sem_t));
-	munmap(sem_immGotCert,sizeof(sem_t));
 	munmap(sem_jdgEnter,sizeof(sem_t));
 	munmap(sem_jdgConf,sizeof(sem_t));
 	munmap(sem_log,sizeof(sem_t));
@@ -164,21 +160,15 @@ void immigrants(){
 			sem_wait(sem_jdgEnter); //Entes building if there is no judge in building
 			sem_post(sem_jdgEnter); //Preserve the value of the semaphore
 				printLogImmigrant("enters",i,++(*inBldNotConf),*chckdNotConf,++(*inBld));
-				//printDebugSemValue("Immigrant:ImmStart There is someone to be confirmed",sem_immStart);
 				sem_post(sem_immStart);
 			sem_wait(sem_immCheck);
 				printLogImmigrant("checks",i,*inBldNotConf,++(*chckdNotConf),*inBld);
-			//printf("%d",i);
 			sem_post(sem_immCheck);
-			//printDebugSemValue("Immigrant:waiting for confirmation",sem_jdgConf);
 			sem_wait(sem_jdgConf);//Continues if judge confirmed the certificate
 			sem_wait(sem_immStart);
-				//printDebugSemValue("Immigrant:ImmStart The someone left",sem_immStart);
-				//printf("%d",i);
-				//printDebugSemValue("Immigrant:jdgConf continues",sem_jdgConf);
+
 				printLogImmigrant("wants certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
 				waitFor(arguments.iT);
-				//(*resolvedImmigrants)++;
 				printLogImmigrant("got certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
 				printLogImmigrant("leaves",i,*inBldNotConf,*chckdNotConf,--(*inBld));
 		    exit(0);
@@ -205,12 +195,10 @@ void judge(){
 			printLogJudge("starts confirmation");
 			for(int i=0;i<*inBldNotConf;i++){
 				sem_post(sem_jdgConf);
-				//printDebugSemValue("Judge:made one confirmation, jdgConf:",sem_jdgConf);
  
 			}
 
 			//Judge confirmed the certificate
-			//printDebugSemValue("Judge:jdgConf conf",sem_jdgConf);
 			waitFor(arguments.jT);
 			printLogJudge("ends confirmation");
 			*inBldNotConf=0;
@@ -220,13 +208,10 @@ void judge(){
 			printLogJudge("leaves");
 		sem_post(sem_jdgEnter);
 		if(arguments.pI==*resolvedImmigrants){
-				//printf("%d = %d\n",*resolvedImmigrants,arguments.pI);
 				printLogJudgeSimple("finishes");
 		    }
 		else
 			{
-				//printf("%d != %d\n",*resolvedImmigrants,arguments.pI);
-				//printDebugSemValue("Judge: New judge:",sem_immStart);
 				sem_wait(sem_immStart);
 				sem_post(sem_immStart);
 				judge();
@@ -247,10 +232,8 @@ int main(int argc, char *argv[]){
 		if (secondFork == 0) {
 			//judge Generator
 				judge();
-			
 		}
 		else if(secondFork>0){
-			
 			//immigrant Generator
 			immigrants();
 		}
@@ -258,13 +241,11 @@ int main(int argc, char *argv[]){
 			fprintf(stderr, "Fork failed!");
 			return 1;	
 		}
-
 	}	
 	else if(firstFork<0){
 		fprintf(stderr, "Fork failed!");
 		return 1;
 	}
-
 	else{ //MAIN PROCCESS
 		cleanup();
 	}

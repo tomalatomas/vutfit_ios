@@ -32,7 +32,6 @@ typedef struct {
 	//Semaphores
 	sem_t *sem_immStart, //Next immigrant in line is ready to start, enter and check
 		  *sem_immCheck, //All immigrants in the building have checked, judge can start confirmation
-		  *sem_immGotCert, // Immigrants got the certificate and is ready to leave
 		  *sem_jdgEnter, //Judge entered the building, nobody else can enter the building
 		  *sem_jdgConf, //Judge ended confirmation
 		  *sem_log; //Printing to the log file
