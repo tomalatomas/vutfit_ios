@@ -182,21 +182,22 @@ void immigrants(){
 		sem_wait(sem_jdgLeft);
 		printLogJudgeSimple("wants to enter");
 		printLogJudge("enters");
-		if(*chckdNotConf!=*inBld){
+		if(*chckdNotConf!=*inBldNotConf){
 				printLogJudge("waits for imm"); //Prints if some immigrant havent checked yet
 			}
 		sem_wait(sem_immCheck);  //Judge waits till all immigrants have checked
 		sem_post(sem_immCheck);
 		printLogJudge("starts confirmation");
-		for(int i=0;i<*inBldNotConf;i++){
-			sem_post(sem_jdgConf);
-		}
+		int confirmed=*inBldNotConf;
 			//Judge confirmed the certificate
 		waitFor(arguments.jT);
 		*resolvedImmigrants+=*chckdNotConf;
 		*chckdNotConf=0;
 		*inBldNotConf=0;
 		printLogJudge("ends confirmation");
+		for(int i=0;i<confirmed;i++){
+			sem_post(sem_jdgConf);
+		}
 		waitFor(arguments.jT);
 		printLogJudge("leaves");
 		sem_post(sem_jdgLeft);	
