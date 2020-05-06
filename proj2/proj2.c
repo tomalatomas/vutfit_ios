@@ -64,39 +64,39 @@ bool initShmSem(){
 	(*inBld)=0;
 	(*resolvedImmigrants)=0;
 	//Semaphores
-	if ((sem_immStart=mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED) return false;
-	if ((sem_immCheck =mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED)return false;
-	if ((sem_jdgEnter =mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED) return false;
-	if ((sem_jdgLeft =mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED) return false;
-	if ((sem_jdgConf =mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED) return false;
-	if ((sem_log =mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED) return false;
 
-	if (sem_init(sem_immStart, 1, 1) == -1) return false;
-	if (sem_init(sem_immCheck, 1, 1) == -1) return false;
-	if (sem_init(sem_jdgEnter, 1, 1) == -1) return false;
-	if (sem_init(sem_jdgLeft, 1, 1) == -1) return false;
-	if (sem_init(sem_jdgConf, 1, 0) == -1) return false;
-	if (sem_init(sem_log, 1, 1) == -1) return false;
+	//if ((sem_immStart=mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED) return false;
+	sem_immStart=sem_open("/xtomal02_sem_immStart",O_CREAT | O_EXCL, 0644, 1);
+	sem_immCheck=sem_open("/xtomal02_sem_immCheck",O_CREAT | O_EXCL, 0644, 1);
+	sem_jdgEnter=sem_open("/xtomal02_sem_jdgEnter",O_CREAT | O_EXCL, 0644, 1);
+	sem_jdgLeft=sem_open("/xtomal02_sem_jdgLeft",O_CREAT | O_EXCL, 0644, 1);
+	sem_jdgConf=sem_open("/xtomal02_sem_jdgConf",O_CREAT | O_EXCL, 0644, 0);
+	sem_log=sem_open("/xtomal02_sem_log",O_CREAT | O_EXCL, 0644, 1);
+
+	if (sem_immStart == SEM_FAILED) return false;
+	if (sem_immCheck == SEM_FAILED) return false;
+	if (sem_jdgEnter== SEM_FAILED) return false;
+	if (sem_jdgLeft== SEM_FAILED) return false;
+	if (sem_jdgConf== SEM_FAILED) return false;
+	if (sem_log== SEM_FAILED) return false;
 
 	return true;
 }
 
 bool cleanup(){
 	//Semaphores
-	if(sem_destroy(sem_immStart) == -1) return false;
-	if(sem_destroy(sem_immCheck) == -1) return false;
-	if(sem_destroy(sem_jdgEnter) == -1) return false;
-	if(sem_destroy(sem_jdgLeft) == -1) return false;
-	if(sem_destroy(sem_jdgConf) == -1) return false;
-	if(sem_destroy(sem_log) == -1) return false;
-	munmap(sem_immStart,sizeof(sem_t));	
-	munmap(sem_immCheck,sizeof(sem_t));
-	munmap(sem_jdgEnter,sizeof(sem_t));
-	munmap(sem_jdgLeft,sizeof(sem_t));
-	munmap(sem_jdgConf,sizeof(sem_t));
-	munmap(sem_log,sizeof(sem_t));
-
-
+	sem_close(sem_immStart);
+	sem_close(sem_immCheck);
+	sem_close(sem_jdgEnter);
+	sem_close(sem_jdgLeft);
+	sem_close(sem_jdgConf);
+	sem_close(sem_log);
+	sem_unlink("/xtomal02_sem_immStart");
+	sem_unlink("/xtomal02_sem_immCheck");
+	sem_unlink("/xtomal02_sem_jdgEnter");
+	sem_unlink("/xtomal02_sem_jdgLeft");
+	sem_unlink("/xtomal02_sem_jdgConf");
+	sem_unlink("/xtomal02_sem_log");
 	//Shared memory
 	munmap(actionCounter,sizeof(int));
 	munmap(inBldNotConf,sizeof(int));
@@ -148,15 +148,16 @@ void printDebugSemValue(char *text, sem_t *semaphore){
 void waitFor(int sharedVariable){
 	if(sharedVariable!=0){
 		int delay= random() % sharedVariable;
+		printf("%d\n",delay);
 		usleep(delay * 1000);
 	}
 }
 
 void immigrants(){
-	srand(time(NULL)*getpid());
 	pid_t immigrantPid;
     int i;
     for(i=1; i<=arguments.pI; i++){
+    	printf("iG:");
     	waitFor(arguments.iG);
 		immigrantPid= fork();
 		if(immigrantPid==0){ //New Immigrant
@@ -171,6 +172,8 @@ void immigrants(){
 			sem_wait(sem_jdgConf);//Continues if judge confirmed the certificate
 			sem_wait(sem_immStart);
 				printLogImmigrant("wants certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
+				 printf("iT:");
+
 				waitFor(arguments.iT);
 				printLogImmigrant("got certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
 				sem_wait(sem_jdgLeft); //Entes building if there is no judge in building
@@ -186,8 +189,8 @@ void immigrants(){
     }
 }
 
-void judge(){ 
-	srand(time(NULL));
+void judge(){
+	printf("jG:");
 	waitFor(arguments.jG);
 	    sem_wait(sem_jdgEnter);
 		sem_wait(sem_jdgLeft);
@@ -205,11 +208,14 @@ void judge(){
 			}
 
 			//Judge confirmed the certificate
+			 printf("jT:");
 			waitFor(arguments.jT);
 			*resolvedImmigrants+=*chckdNotConf;
 			*chckdNotConf=0;
 			*inBldNotConf=0;
 			printLogJudge("ends confirmation");
+				printf("jT:");
+
 				waitFor(arguments.jT);
 			printLogJudge("leaves");
 		sem_post(sem_jdgLeft);	
@@ -228,6 +234,7 @@ void judge(){
 
 //_________________________________________________________________________________
 int main(int argc, char *argv[]){
+	srand(time(NULL));
 	if(!initArgs(argc,argv,&arguments)||!initLogFile()||!initShmSem()){
 		fprintf(stderr, "Program initialized unsuccessfuly\n");
 		return 1;
