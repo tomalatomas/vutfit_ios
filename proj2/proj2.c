@@ -166,7 +166,6 @@ void immigrants(){
 			sem_post(sem_immCheck);
 			sem_wait(sem_jdgConf);//Continues if judge confirmed the certificate
 			sem_wait(sem_immStart);
-
 				printLogImmigrant("wants certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
 				waitFor(arguments.iT);
 				printLogImmigrant("got certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
@@ -200,10 +199,10 @@ void judge(){
 
 			//Judge confirmed the certificate
 			waitFor(arguments.jT);
-			printLogJudge("ends confirmation");
-			*inBldNotConf=0;
 			*resolvedImmigrants+=*chckdNotConf;
 			*chckdNotConf=0;
+			*inBldNotConf=0;
+			printLogJudge("ends confirmation");
 				waitFor(arguments.jT);
 			printLogJudge("leaves");
 		sem_post(sem_jdgEnter);
