@@ -67,12 +67,14 @@ bool initShmSem(){
 	if ((sem_immStart=mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED) return false;
 	if ((sem_immCheck =mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED)return false;
 	if ((sem_jdgEnter =mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED) return false;
+	if ((sem_jdgLeft =mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED) return false;
 	if ((sem_jdgConf =mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED) return false;
 	if ((sem_log =mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED) return false;
 
 	if (sem_init(sem_immStart, 1, 1) == -1) return false;
 	if (sem_init(sem_immCheck, 1, 1) == -1) return false;
 	if (sem_init(sem_jdgEnter, 1, 1) == -1) return false;
+	if (sem_init(sem_jdgLeft, 1, 1) == -1) return false;
 	if (sem_init(sem_jdgConf, 1, 0) == -1) return false;
 	if (sem_init(sem_log, 1, 1) == -1) return false;
 
@@ -84,11 +86,13 @@ bool cleanup(){
 	if(sem_destroy(sem_immStart) == -1) return false;
 	if(sem_destroy(sem_immCheck) == -1) return false;
 	if(sem_destroy(sem_jdgEnter) == -1) return false;
+	if(sem_destroy(sem_jdgLeft) == -1) return false;
 	if(sem_destroy(sem_jdgConf) == -1) return false;
 	if(sem_destroy(sem_log) == -1) return false;
 	munmap(sem_immStart,sizeof(sem_t));	
 	munmap(sem_immCheck,sizeof(sem_t));
 	munmap(sem_jdgEnter,sizeof(sem_t));
+	munmap(sem_jdgLeft,sizeof(sem_t));
 	munmap(sem_jdgConf,sizeof(sem_t));
 	munmap(sem_log,sizeof(sem_t));
 
@@ -169,6 +173,8 @@ void immigrants(){
 				printLogImmigrant("wants certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
 				waitFor(arguments.iT);
 				printLogImmigrant("got certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
+				sem_wait(sem_jdgLeft); //Entes building if there is no judge in building
+				sem_post(sem_jdgLeft);
 				printLogImmigrant("leaves",i,*inBldNotConf,*chckdNotConf,--(*inBld));
 		    exit(0);
 		}
@@ -184,6 +190,7 @@ void judge(){
 	srand(time(NULL));
 	waitFor(arguments.jG);
 	    sem_wait(sem_jdgEnter);
+		sem_wait(sem_jdgLeft);
 			printLogJudgeSimple("wants to enter");
 			printLogJudge("enters");
 			if(*chckdNotConf!=*inBld){
@@ -205,6 +212,7 @@ void judge(){
 			printLogJudge("ends confirmation");
 				waitFor(arguments.jT);
 			printLogJudge("leaves");
+		sem_post(sem_jdgLeft);	
 		sem_post(sem_jdgEnter);
 		if(arguments.pI==*resolvedImmigrants){
 				printLogJudgeSimple("finishes");
@@ -248,5 +256,6 @@ int main(int argc, char *argv[]){
 	else{ //MAIN PROCCESS
 		cleanup();
 	}
+	//cleanup();
 	return 0;
 }
