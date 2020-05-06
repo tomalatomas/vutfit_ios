@@ -24,7 +24,6 @@ bool initArgs(int argc, char *argv[], Arguments *arguments){
 		if(atoi(argv[1])<1){
 			fprintf(stderr,"Invalid arguments!\n");
 			return false; 	
-
 		}
 		if(i>1){
 			if(atoi(argv[i])<ARGSMINTIME || atoi(argv[i])>ARGSMAXTIME ){
@@ -47,7 +46,6 @@ bool initLogFile(){
 		return false;
 	}
 	setbuf(logFile, NULL);
-
 	return true;
 }
 bool initShmSem(){
@@ -64,8 +62,6 @@ bool initShmSem(){
 	(*inBld)=0;
 	(*resolvedImmigrants)=0;
 	//Semaphores
-
-	//if ((sem_immStart=mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_SHARED, 0, 0)) == MAP_FAILED) return false;
 	sem_immStart=sem_open("/xtomal02_sem_immStart",O_CREAT | O_EXCL, 0644, 1);
 	sem_immCheck=sem_open("/xtomal02_sem_immCheck",O_CREAT | O_EXCL, 0644, 1);
 	sem_jdgEnter=sem_open("/xtomal02_sem_jdgEnter",O_CREAT | O_EXCL, 0644, 1);
@@ -103,7 +99,6 @@ bool cleanup(){
 	munmap(chckdNotConf,sizeof(int));
 	munmap(inBld,sizeof(int));
 	munmap(resolvedImmigrants,sizeof(int));
-
 	//Log file
 	fclose(logFile);
 	return true;
@@ -112,154 +107,140 @@ bool cleanup(){
 void printLogJudge(char *text){
 
 	sem_wait(sem_log);
-		fprintf(logFile,"%d\t: JUDGE \t: %-17s \t: %d\t: %d\t: %d\n",(*actionCounter)++,text,*inBldNotConf,*chckdNotConf,*inBld);
+	fprintf(logFile,"%d\t: JUDGE \t: %-17s \t: %d\t: %d\t: %d\n",(*actionCounter)++,text,*inBldNotConf,*chckdNotConf,*inBld);
 	sem_post(sem_log);
-	
 }
 
 void printLogJudgeSimple(char *text){
 
 	sem_wait(sem_log);
-		fprintf(logFile,"%d\t: JUDGE \t: %-17s \n",(*actionCounter)++,text);
+	fprintf(logFile,"%d\t: JUDGE \t: %-17s \n",(*actionCounter)++,text);
 	sem_post(sem_log);
-	
 }
 
 void printLogImmigrant(char *text, int idImm, int NE, int NC, int NB){
 	sem_wait(sem_log);
-		fprintf(logFile,"%d\t: IMM %d \t: %-17s \t: %d\t: %d\t: %d\n",(*actionCounter)++,idImm,text, NE,NC,NB);
+	fprintf(logFile,"%d\t: IMM %d \t: %-17s \t: %d\t: %d\t: %d\n",(*actionCounter)++,idImm,text, NE,NC,NB);
 	sem_post(sem_log);
-	
 }
 
 void printLogImmigrantSimple(char *text, int idImm){
 	sem_wait(sem_log);
-		fprintf(logFile,"%d\t: IMM %d \t: %-17s \n",(*actionCounter)++,idImm,text);
+	fprintf(logFile,"%d\t: IMM %d \t: %-17s \n",(*actionCounter)++,idImm,text);
 	sem_post(sem_log);
-	
 }
 
 void printDebugSemValue(char *text, sem_t *semaphore){
-		int semValue;
-		sem_getvalue(semaphore,&semValue);
-		printf("%s:%d\n",text,semValue);
+	int semValue;
+	sem_getvalue(semaphore,&semValue);
+	printf("%s:%d\n",text,semValue);
 }
 
 void waitFor(int sharedVariable){
 	if(sharedVariable!=0){
 		int delay= random() % sharedVariable;
-		printf("%d\n",delay);
 		usleep(delay * 1000);
 	}
 }
 
 void immigrants(){
 	pid_t immigrantPid;
-    int i;
-    for(i=1; i<=arguments.pI; i++){
-    	printf("iG:");
-    	waitFor(arguments.iG);
+	int i;
+	for(i=1; i<=arguments.pI; i++){
+		waitFor(arguments.iG);
 		immigrantPid= fork();
 		if(immigrantPid==0){ //New Immigrant
-				printLogImmigrantSimple("starts",i);
+			printLogImmigrantSimple("starts",i);
 			sem_wait(sem_jdgEnter); //Entes building if there is no judge in building
 			sem_post(sem_jdgEnter); //Preserve the value of the semaphore
-				printLogImmigrant("enters",i,++(*inBldNotConf),*chckdNotConf,++(*inBld));
-				sem_post(sem_immStart);
+			printLogImmigrant("enters",i,++(*inBldNotConf),*chckdNotConf,++(*inBld));
+			sem_post(sem_immStart);
 			sem_wait(sem_immCheck);
-				printLogImmigrant("checks",i,*inBldNotConf,++(*chckdNotConf),*inBld);
+			printLogImmigrant("checks",i,*inBldNotConf,++(*chckdNotConf),*inBld);
 			sem_post(sem_immCheck);
 			sem_wait(sem_jdgConf);//Continues if judge confirmed the certificate
 			sem_wait(sem_immStart);
-				printLogImmigrant("wants certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
-				 printf("iT:");
-
-				waitFor(arguments.iT);
-				printLogImmigrant("got certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
+			printLogImmigrant("wants certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
+			waitFor(arguments.iT);
+			printLogImmigrant("got certificate",i,*inBldNotConf,*chckdNotConf,*inBld);
 				sem_wait(sem_jdgLeft); //Entes building if there is no judge in building
 				sem_post(sem_jdgLeft);
 				printLogImmigrant("leaves",i,*inBldNotConf,*chckdNotConf,--(*inBld));
-		    exit(0);
+				exit(0);
+			}
+			else if (immigrantPid<0){
+				fprintf(stderr, "Immigrant fork failed!\n");
+				cleanup();
+				exit(1);
+			}
 		}
-		else if (immigrantPid<0){
-			fprintf(stderr, "Immigrant fork failed!\n");
-			cleanup();
-			exit(1);
-		}
-    }
-}
+	}
 
-void judge(){
-	printf("jG:");
-	waitFor(arguments.jG);
-	    sem_wait(sem_jdgEnter);
+	void judge(){
+		waitFor(arguments.jG);
+		sem_wait(sem_jdgEnter);
 		sem_wait(sem_jdgLeft);
-			printLogJudgeSimple("wants to enter");
-			printLogJudge("enters");
-			if(*chckdNotConf!=*inBld){
+		printLogJudgeSimple("wants to enter");
+		printLogJudge("enters");
+		if(*chckdNotConf!=*inBld){
 				printLogJudge("waits for imm"); //Prints if some immigrant havent checked yet
 			}
 		sem_wait(sem_immCheck);  //Judge waits till all immigrants have checked
 		sem_post(sem_immCheck);
-			printLogJudge("starts confirmation");
-			for(int i=0;i<*inBldNotConf;i++){
-				sem_post(sem_jdgConf);
- 
-			}
-
+		printLogJudge("starts confirmation");
+		for(int i=0;i<*inBldNotConf;i++){
+			sem_post(sem_jdgConf);
+		}
 			//Judge confirmed the certificate
-			 printf("jT:");
-			waitFor(arguments.jT);
-			*resolvedImmigrants+=*chckdNotConf;
-			*chckdNotConf=0;
-			*inBldNotConf=0;
-			printLogJudge("ends confirmation");
-				printf("jT:");
-
-				waitFor(arguments.jT);
-			printLogJudge("leaves");
+		waitFor(arguments.jT);
+		*resolvedImmigrants+=*chckdNotConf;
+		*chckdNotConf=0;
+		*inBldNotConf=0;
+		printLogJudge("ends confirmation");
+		waitFor(arguments.jT);
+		printLogJudge("leaves");
 		sem_post(sem_jdgLeft);	
 		sem_post(sem_jdgEnter);
 		if(arguments.pI==*resolvedImmigrants){
-				printLogJudgeSimple("finishes");
-		    }
+			printLogJudgeSimple("finishes");
+		}
 		else
-			{
-				sem_wait(sem_immStart);
-				sem_post(sem_immStart);
-				judge();
-			}
+		{
+			sem_wait(sem_immStart);
+			sem_post(sem_immStart);
+			judge();
+		}
 		exit(0);
-}
+	}
 
 //_________________________________________________________________________________
-int main(int argc, char *argv[]){
-	srand(time(NULL));
-	if(!initArgs(argc,argv,&arguments)||!initLogFile()||!initShmSem()){
-		fprintf(stderr, "Program initialized unsuccessfuly\n");
-		return 1;
-	} 
-	pid_t firstFork = fork();
-	pid_t secondFork=0;
-	if (firstFork == 0) {
-		secondFork=fork();
-		if (secondFork == 0) {
+	int main(int argc, char *argv[]){
+		srand(time(NULL));
+		if(!initArgs(argc,argv,&arguments)||!initLogFile()||!initShmSem()){
+			fprintf(stderr, "Program initialized unsuccessfuly\n");
+			return 1;
+		} 
+		pid_t firstFork = fork();
+		pid_t secondFork=0;
+		if (firstFork == 0) {
+			secondFork=fork();
+			if (secondFork == 0) {
 			//judge Generator
 				judge();
-		}
-		else if(secondFork>0){
+			}
+			else if(secondFork>0){
 			//immigrant Generator
-			immigrants();
-		}
-		else{
+				immigrants();
+			}
+			else{
+				fprintf(stderr, "Fork failed!");
+				return 1;	
+			}
+		}	
+		else if(firstFork<0){
 			fprintf(stderr, "Fork failed!");
-			return 1;	
+			return 1;
 		}
-	}	
-	else if(firstFork<0){
-		fprintf(stderr, "Fork failed!");
-		return 1;
-	}
 	else{ //MAIN PROCCESS
 		cleanup();
 	}
