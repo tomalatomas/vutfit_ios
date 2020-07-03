@@ -105,26 +105,28 @@ bool cleanup(){
 }
 
 void printLogJudge(char *text){
-
+	//Check issues in this repository!!!
 	sem_wait(sem_log);
 	fprintf(logFile,"%d\t: JUDGE \t: %-17s \t: %d\t: %d\t: %d\n",(*actionCounter)++,text,*inBldNotConf,*chckdNotConf,*inBld);
 	sem_post(sem_log);
 }
 
 void printLogJudgeSimple(char *text){
-
+	//Check issues in this repository!!!
 	sem_wait(sem_log);
 	fprintf(logFile,"%d\t: JUDGE \t: %-17s \n",(*actionCounter)++,text);
 	sem_post(sem_log);
 }
 
 void printLogImmigrant(char *text, int idImm, int NE, int NC, int NB){
+	//Check issues in this repository!!!
 	sem_wait(sem_log);
 	fprintf(logFile,"%d\t: IMM %d \t: %-17s \t: %d\t: %d\t: %d\n",(*actionCounter)++,idImm,text, NE,NC,NB);
 	sem_post(sem_log);
 }
 
 void printLogImmigrantSimple(char *text, int idImm){
+	//Check issues in this repository!!!
 	sem_wait(sem_log);
 	fprintf(logFile,"%d\t: IMM %d \t: %-17s \n",(*actionCounter)++,idImm,text);
 	sem_post(sem_log);
